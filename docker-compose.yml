@@ -1,0 +1,42 @@
+services:
+  airflow:
+    image: apache/airflow:2.10.2
+    container_name: airflow-standalone
+    env_file:
+      - .env
+    ports:
+      - 8080:8080
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+      PYTHONPATH: "/opt/airflow/dags:/opt/airflow/python_jobs:/opt/airflow/utils"
+      _PIP_ADDITIONAL_REQUIREMENTS: "requests python-dotenv"
+    command: >
+      bash -lc "
+        airflow db migrate &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.org || true &&
+        airflow standalone
+      "
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./python_jobs:/opt/airflow/python_jobs
+      - ./utils:/opt/airflow/utils
+      - ./raw-data:/opt/airflow/raw-data
+
+spark:
+    image: bitnami/spark:3.5
+    container_name: spark-standalone
+    environment:
+      - SPARK_MASTER_HOST=spark
+    ports:
+      - "7077:7077"   # RPC del master (para spark-submit)
+      - "8081:8080"   # UI del master -> http://localhost:8081
+    volumes:
+      - ./spark_jobs:/opt/spark/spark_jobs
+    command: >
+      bash -lc "
+        /opt/bitnami/spark/sbin/start-master.sh &&
+        /opt/bitnami/spark/sbin/start-worker.sh spark://spark:7077 &&
+        tail -f /dev/null
+      "
