@@ -1,21 +1,48 @@
 services:
+
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: "airflow"
+      POSTGRES_PASSWORD: "airflow"
+      POSTGRES_DB: "airflow"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
   airflow:
     image: apache/airflow:2.10.2
     container_name: airflow-standalone
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - 8080:8080
     environment:
+      TZ: "Europe/Madrid"
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
       PYTHONPATH: "/opt/airflow/dags:/opt/airflow/python_jobs:/opt/airflow/utils"
-      _PIP_ADDITIONAL_REQUIREMENTS: "requests python-dotenv"
+      _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary requests python-dotenv"
+      AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
+      _AIRFLOW_WWW_USER_USERNAME: "admin"
+      _AIRFLOW_WWW_USER_PASSWORD: "admin"
     command: >
       bash -lc "
         airflow db migrate &&
-        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.org || true &&
-        airflow standalone
+        airflow users create
+          --username $${_AIRFLOW_WWW_USER_USERNAME}
+          --password $${_AIRFLOW_WWW_USER_PASSWORD}
+          --firstname Admin --lastname User --role Admin
+          --email admin@example.org || true &&
+        airflow webserver & airflow scheduler
       "
     volumes:
       - ./dags:/opt/airflow/dags
@@ -24,7 +51,7 @@ services:
       - ./utils:/opt/airflow/utils
       - ./raw-data:/opt/airflow/raw-data
 
-spark:
+  spark:
     image: bitnami/spark:3.5
     container_name: spark-standalone
     environment:
@@ -40,3 +67,6 @@ spark:
         /opt/bitnami/spark/sbin/start-worker.sh spark://spark:7077 &&
         tail -f /dev/null
       "
+
+volumes:
+  pg_data:
