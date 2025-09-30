@@ -1,2 +1,2 @@
-dotenv
 requests
+delta-spark==3.1.*

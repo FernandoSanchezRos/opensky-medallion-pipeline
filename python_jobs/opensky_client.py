@@ -98,7 +98,7 @@ class OpenSkyClient:
                  retries: int = 2,
                  backoff: float = 1.5):
         self.base_url = base_url or os.getenv("OPENSKY_API", "https://opensky-network.org/api")
-        self.raw_root = Path(raw_root or os.getenv("RAW_DATA", "raw_data"))
+        self.raw_root = Path(raw_root or os.getenv("AIRFLOW_RAW", "/opt/airflow/raw-data"))
         self.timeout = timeout
         self.retries = retries
         self.backoff = backoff

@@ -1,4 +1,32 @@
 services:
+  init-lakehouse:
+    image: alpine:3.20
+    user: "0:0"   # root para poder chown/chmod/setfacl en el bind mount
+    volumes:
+      - ${HOST_LAKEHOUSE}:/mnt/lakehouse
+      - ivy_cache:/opt/spark/.ivy2
+    command: >
+      sh -lc '
+        set -euo pipefail;
+        apk add --no-cache acl >/dev/null;
+        umask 0002;
+        mkdir -p /mnt/lakehouse;
+
+        # Dueño/grupo base y setgid en el directorio raíz
+        chown 50000:0 /mnt/lakehouse;
+        chmod 2775 /mnt/lakehouse;
+
+        # ACLs "actuales" (para el propio dir) y "por defecto" (herencia a lo nuevo)
+        setfacl -m u:50000:rwx,u:0:rwx,g:0:rwx,m:rwx /mnt/lakehouse || true;
+        setfacl -d -m u:50000:rwx,u:0:rwx,g:0:rwx,o:rx,m:rwx /mnt/lakehouse || true;
+
+        # ---- ivy cache ----
+        mkdir -p /opt/spark/.ivy2/cache /opt/spark/.ivy2/jars;
+        chown -R 50000:0 /opt/spark/.ivy2;
+        chmod -R 2775 /opt/spark/.ivy2;
+
+      '
+    restart: "no"
 
   postgres:
     image: postgres:14
@@ -16,57 +44,149 @@ services:
 
   airflow:
     image: apache/airflow:2.10.2
+    user: "50000:0"
     container_name: airflow-standalone
     env_file:
       - .env
     depends_on:
       postgres:
         condition: service_healthy
+      init-lakehouse:
+        condition: service_completed_successfully
     ports:
-      - 8080:8080
+      - "8080:8080"
+    group_add:
+      - "${DOCKER_GID}"
     environment:
-      TZ: "Europe/Madrid"
+      TZ: "${TZ}"
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
-      PYTHONPATH: "/opt/airflow/dags:/opt/airflow/python_jobs:/opt/airflow/utils"
-      _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary requests python-dotenv"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
       AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
-      _AIRFLOW_WWW_USER_USERNAME: "admin"
-      _AIRFLOW_WWW_USER_PASSWORD: "admin"
+      # instala deps al arrancar (sin Dockerfile)
+      _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-docker psycopg2-binary requests python-dotenv"
+      PYTHONPATH: "${AIRFLOW_DAGS}:${AIRFLOW_PYJOBS}:${AIRFLOW_UTILS}"
+      AIRFLOW__LOGGING__BASE_LOG_FOLDER: "/opt/airflow/logs"
+      AIRFLOW__LOGGING__PROCESSOR_LOG_FOLDER: "/opt/airflow/logs/scheduler"
+      AIRFLOW__LOGGING__DAG_PROCESSOR_MANAGER_LOG_LOCATION: "/opt/airflow/logs/dag_processor_manager/dag_processor_manager.log"
+      # opcional pero recomendado (ponlo en .env)
+      # AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
+      _AIRFLOW_WWW_USER_USERNAME: "${_AIRFLOW_WWW_USER_USERNAME:-admin}"
+      _AIRFLOW_WWW_USER_PASSWORD: "${_AIRFLOW_WWW_USER_PASSWORD:-admin}"
+      DOCKER_HOST: "unix:///var/run/docker.sock"
     command: >
       bash -lc "
+        set -e
+        umask 0000 &&
+        mkdir -p /opt/airflow/raw-data/states /opt/airflow/lakehouse /opt/airflow/logs &&
         airflow db migrate &&
-        airflow users create
-          --username $${_AIRFLOW_WWW_USER_USERNAME}
-          --password $${_AIRFLOW_WWW_USER_PASSWORD}
-          --firstname Admin --lastname User --role Admin
-          --email admin@example.org || true &&
-        airflow webserver & airflow scheduler
+        airflow users create --username ${_AIRFLOW_WWW_USER_USERNAME:-admin} --password ${_AIRFLOW_WWW_USER_PASSWORD:-admin} --firstname Admin --lastname User --role Admin --email admin@example.org || true &&
+        (airflow webserver &) &&
+        exec airflow scheduler
       "
     volumes:
-      - ./dags:/opt/airflow/dags
+      - ./dags:${AIRFLOW_DAGS}
       - ./logs:/opt/airflow/logs
-      - ./python_jobs:/opt/airflow/python_jobs
-      - ./utils:/opt/airflow/utils
-      - ./raw-data:/opt/airflow/raw-data
+      - ${HOST_UTILS}:${AIRFLOW_UTILS}
+      - ${HOST_RAW}:${AIRFLOW_RAW}
+      - ${HOST_LAKEHOUSE}:${AIRFLOW_LAKEHOUSE}
+      - ${HOST_PYTHON_JOBS}:${AIRFLOW_PYJOBS}
+      - /var/run/docker.sock:/var/run/docker.sock
 
-  spark:
-    image: bitnami/spark:3.5
-    container_name: spark-standalone
+  spark-master:
+    build:
+      context: .
+      dockerfile: spark.Dockerfile
+    image: ${SPARK_IMAGE}
+    user: "50000:0"
+    depends_on:
+      init-lakehouse:
+        condition: service_completed_successfully
     environment:
-      - SPARK_MASTER_HOST=spark
+      HADOOP_USER_NAME: "spark"
+      SPARK_USER: "spark"
+      TZ: "${TZ}"
+      HOME: "/opt/spark"
+      SPARK_MODE: "master"
+      SPARK_DAEMON_JAVA_OPTS: "-Dspark.eventLog.enabled=true -Dspark.eventLog.dir=file:${SPARK_HISTORY_DIR}"
+      PYSPARK_PYTHON: "/opt/bitnami/python/bin/python3"
+      PYSPARK_DRIVER_PYTHON: "/opt/bitnami/python/bin/python3"
+      PYTHONPATH: "/opt/spark:${SPARK_JOBS_ROOT}:${SPARK_UTILS}"
+    hostname: spark-master
+    container_name: spark-master
     ports:
-      - "7077:7077"   # RPC del master (para spark-submit)
-      - "8081:8080"   # UI del master -> http://localhost:8081
+      - "7077:7077"
+      - "8081:8080"
+      - "4040-4045:4040-4045"
     volumes:
-      - ./spark_jobs:/opt/spark/spark_jobs
+      - ${HOST_SPARK_JOBS}:${SPARK_JOBS_ROOT}
+      - ${HOST_LAKEHOUSE}:${SPARK_LAKEHOUSE}:rw
+      - ${HOST_UTILS}:${SPARK_UTILS}
+      - ${HOST_RAW}:${SPARK_RAW}
+      - spark_events:${SPARK_HISTORY_DIR}
+      - ivy_cache:/opt/spark/.ivy2
     command: >
       bash -lc "
+        umask 0000 &&
+        mkdir -p ${SPARK_RAW} ${SPARK_LAKEHOUSE} ${SPARK_HISTORY_DIR} &&
         /opt/bitnami/spark/sbin/start-master.sh &&
-        /opt/bitnami/spark/sbin/start-worker.sh spark://spark:7077 &&
         tail -f /dev/null
       "
 
+  spark-worker:
+    image: ${SPARK_IMAGE}
+    user: "50000:0"
+    depends_on:
+      init-lakehouse:
+        condition: service_completed_successfully
+      spark-master:
+        condition: service_started
+    environment:
+      HADOOP_USER_NAME: "spark"
+      SPARK_USER: "spark"
+      TZ: "${TZ}"
+      HOME: "/opt/spark"
+      SPARK_MODE: "worker"
+      SPARK_MASTER_URL: "${SPARK_MASTER}"
+      SPARK_WORKER_MEMORY: "4G"
+      SPARK_WORKER_CORES: "2"
+      PYSPARK_PYTHON: "/opt/bitnami/python/bin/python3"
+      PYSPARK_DRIVER_PYTHON: "/opt/bitnami/python/bin/python3"
+      PYTHONPATH: "/opt/spark:${SPARK_JOBS_ROOT}:${SPARK_UTILS}"
+    ports:
+      - "8082:8080"
+    volumes:
+      - ${HOST_SPARK_JOBS}:${SPARK_JOBS_ROOT}
+      - ${HOST_LAKEHOUSE}:${SPARK_LAKEHOUSE}:rw
+      - ${HOST_UTILS}:${SPARK_UTILS}
+      - ${HOST_RAW}:${SPARK_RAW}
+      - ivy_cache:/opt/spark/.ivy2
+    command: >
+      bash -lc "
+        umask 0000 &&
+        mkdir -p ${SPARK_RAW} ${SPARK_LAKEHOUSE} &&
+        /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+        tail -f /dev/null
+      "
+
+  spark-history:
+    image: ${SPARK_IMAGE}
+    depends_on:
+      init-lakehouse:
+        condition: service_completed_successfully
+    environment:
+      HADOOP_USER_NAME: "spark"
+      SPARK_USER: "spark"
+      TZ: "${TZ}"
+      SPARK_HISTORY_OPTS: "-Dspark.history.fs.logDirectory=file:${SPARK_HISTORY_DIR} -Dspark.history.ui.port=18080"
+    ports:
+      - "18080:18080"
+    volumes:
+      - spark_events:${SPARK_HISTORY_DIR}
+    command: >
+      bash -lc "/opt/bitnami/spark/sbin/start-history-server.sh && tail -f /dev/null"
+
 volumes:
   pg_data:
+  spark_events:
+  ivy_cache:

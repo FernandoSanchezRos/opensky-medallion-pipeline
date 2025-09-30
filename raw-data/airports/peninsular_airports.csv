@@ -1,0 +1,51 @@
+city,region,icao,iata,name,type
+A Coruña,Galicia,LECO,LCG,A Coruña Airport (Alvedro),civil
+Algeciras,Andalusia,LEAG,,Algeciras Heliport,civil
+Albacete,Castile-La Mancha,LEAB,ABC,Albacete Airport (Los Llanos),civil
+Alicante,Valencia,LEAL,ALC,Alicante-Elche Airport,civil
+Almería,Andalusia,LEAM,LEI,Almería Airport,civil
+Asturias,Asturias,LEAS,OVD,Asturias Airport,civil
+Badajoz,Extremadura,LEBZ,BJZ,Badajoz Airport,civil
+Barcelona,Catalonia,LEBL,BCN,Barcelona–El Prat Airport,civil
+Bilbao,Basque Country,LEBB,BIO,Bilbao Airport,civil
+Burgos,Castile and León,LEBG,RGS,Burgos Airport,civil
+Castellón,Valencia,LECH,CDT,Castellón–Costa Azahar Airport,civil
+Córdoba,Andalusia,LEBA,ODB,Córdoba Airport,civil
+Girona,Catalonia,LEGE,GRO,Girona–Costa Brava Airport,civil
+Granada/Jaén,Andalusia,LEGR,GRX,Federico García Lorca Airport,civil
+Huesca,Aragon,LEHC,HSK,Huesca–Pirineos Airport,civil
+Jerez de la Frontera,Andalusia,LEJR,XRY,Jerez Airport,civil
+La Seu d'Urgell/Andorra,Catalonia,LESU,LEU,Andorra–La Seu d'Urgell Airport,civil
+León,Castile and León,LELN,LEN,León Airport,civil
+Lleida,Catalonia,LEDA,ILD,Lleida-Alguaire Airport,civil
+Logroño,La Rioja,LELO,RJL,Logroño-Agoncillo Airport,civil
+Madrid,Madrid,LEMD,MAD,Adolfo Suárez Madrid–Barajas Airport,civil
+Madrid,Madrid,LECU,,Madrid-Cuatro Vientos Airport,civil
+Madrid,Madrid,LETO,TOJ,Madrid-Torrejón Airport,civil
+Málaga,Andalusia,LEMG,AGP,Málaga Airport,civil
+Pamplona,Navarre,LEPP,PNA,Pamplona-Noáin Airport,civil
+Murcia,Region of Murcia,LEMI,RMU,Región de Murcia Int. Airport,civil
+Reus, Catalonia,LERS,REU,Reus Airport,civil
+Sabadell,Catalonia,LELL,QSA,Sabadell Airport,civil
+Salamanca,Castile and León,LESA,SLM,Salamanca Airport,civil
+San Sebastián,Basque Country,LESO,EAS,San Sebastián Airport,civil
+Santander,Cantabria,LEXJ,SDR,Santander Airport,civil
+Santiago de Compostela,Galicia,LEST,SCQ,Santiago de Compostela Airport,civil
+Seville,Andalusia,LEZL,SVQ,Seville Airport,civil
+Teruel,Aragon,LETL,TEV,Teruel Airport,civil
+Valencia,Valencia,LEVC,VLC,Valencia Airport,civil
+Valladolid,Castile and León,LEVD,VLL,Valladolid Airport,civil
+Vigo,Galicia,LEVX,VGO,Vigo-Peinador Airport,civil
+Vitoria,Basque Country,LEVT,VIT,Vitoria Airport,civil
+Zaragoza,Aragon,LEZG,ZAZ,Zaragoza Airport,civil
+Alcantarilla,Region of Murcia,LERI,,Alcantarilla Air Base,military
+Dos Hermanas/Seville,Andalusia,LEEC,,El Copero Military Base,military
+Granada,Andalusia,LEGA,GRX,Armilla Air Base,military
+Madrid,Madrid,LEGT,,Getafe Air Base,military
+Morón de la Frontera,Andalusia,LEMO,OZP,Morón Air Base,military
+Murcia/San Javier,Region of Murcia,LELC,MJV,San Javier Air Base,military
+Rota,Andalusia,LERT,ROZ,Rota Naval Air Base,military
+Santiago de Compostela,Galicia,LEST,SCQ,Santiago Military Airport,military
+Valladolid,Castile and León,LEVD,VLL,Villanubla Air Base,military
+Zaragoza,Aragon,LEZG,ZAZ,Zaragoza Air Base,military
+

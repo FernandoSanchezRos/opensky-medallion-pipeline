@@ -8,16 +8,16 @@ from opensky_client import OpenSkyClient
 with DAG(
     dag_id="opensky_states_raw",
     start_date=datetime(2023, 1, 1),
-    schedule=timedelta(seconds=90),
+    schedule=None,#timedelta(seconds=90),
     catchup=False,
-    tags=["opensky", "states", "raw"]
+    tags=["states", "raw"]
 ) as dag:
 
     @task
     def fetch_states():
         client = OpenSkyClient()
         path, n = client.fetch_states(
-            lamin=35.0, lamax=45.0,   # Península Ibérica aprox
+            lamin=35.0, lamax=45.0,   
             lomin=-10.0, lomax=4.0,
             extended=1,
         )
