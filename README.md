@@ -31,15 +31,18 @@ El objetivo final es disponer de un **histórico propio y trazable**, preparado 
 
 ## Selección de tecnologías
 
-| Tecnología        | Rol en el proyecto                                   | Justificación |
-|-|||
-| **Python**        | Jobs de ingesta y utilidades                         | Ecosistema maduro para scripting y APIs |
-| **Apache Spark 3.5** | Procesamiento distribuido y transformaciones        | Escala, expresividad y soporte Delta Lake |
-| **Delta Lake**    | Formato de tablas transaccionales                     | ACID, *time travel*, soporte `MERGE` |
-| **Airflow**       | Orquestación de DAGs                                 | Scheduling, dependencias, observabilidad |
-| **Docker Compose**| Entorno reproducible (Spark + Airflow + volúmenes)    | Cohesión y despliegue portable |
-| **Parquet**       | Export a BI                                           | Columnar, compresión, integración Power BI |
-| **Power BI**      | Modelo semántico y visualización                      | Relacional (estrella), DAX, dashboards |
+## Selección de tecnologías
+
+| Tecnología         | Rol en el proyecto                                | Justificación                                  |
+|--------------------|---------------------------------------------------|-----------------------------------------------|
+| **Python**         | Jobs de ingesta y utilidades                      | Ecosistema maduro para scripting y APIs       |
+| **Apache Spark 3.5** | Procesamiento distribuido y transformaciones     | Escala, expresividad y soporte Delta Lake     |
+| **Delta Lake**     | Formato de tablas transaccionales                  | ACID, *time travel*, soporte `MERGE`          |
+| **Airflow**        | Orquestación de DAGs                              | Scheduling, dependencias, observabilidad      |
+| **Docker Compose** | Entorno reproducible (Spark + Airflow + volúmenes) | Cohesión y despliegue portable                |
+| **Parquet**        | Export a BI                                        | Columnar, compresión, integración Power BI    |
+| **Power BI**       | Modelo semántico y visualización                   | Relacional (estrella), DAX, dashboards        |
+
 
 
 
